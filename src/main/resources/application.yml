@@ -49,3 +49,8 @@ resilience4j:
       accountService:
         baseConfig: default
 
+customer:
+  service:
+    url: http://localhost:8080/customer/
+
+

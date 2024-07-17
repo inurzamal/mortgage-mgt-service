@@ -3,10 +3,13 @@ package com.nur.service;
 import com.nur.dto.CustomerDTO;
 import com.nur.dto.MortgageDto;
 import com.nur.entity.Mortgage;
+import com.nur.exceptions.CustomerNotFoundException;
+import com.nur.exceptions.ServiceNotAvailableException;
 import com.nur.repository.MortgageRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -26,6 +29,9 @@ public class MortgageService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MortgageService.class);
 
+    @Value("${customer.service.url}")
+    private String baseUrl;
+
     @Autowired
     private MortgageRepository mortgageRepository;
 
@@ -36,7 +42,8 @@ public class MortgageService {
     private RestTemplate restTemplate;
 
     public CustomerDTO getCustomerDetails(Long customerId) {
-        String customerServiceUrl = "http://localhost:8080/customer/" + customerId;
+
+        String customerServiceUrl = baseUrl + customerId;
         return webClientBuilder.build()
                 .get()
                 .uri(customerServiceUrl)
@@ -65,7 +72,7 @@ public class MortgageService {
     }
 
     private CustomerDTO getCustomer(Long customerId) {
-        String url = "http://localhost:8080/customer/" + customerId;
+        String url = baseUrl + customerId;
 
         try {
             // Create headers and httpEntity for the exchange method
@@ -78,24 +85,22 @@ public class MortgageService {
             // Make the REST call using exchange method
             ResponseEntity<CustomerDTO> responseEntity = restTemplate.exchange(url, HttpMethod.GET, httpEntity, CustomerDTO.class);
 
-            // Check if the response body is null and handle it appropriately
             CustomerDTO customerResponse = responseEntity.getBody();
             if (customerResponse == null) {
-                throw new RuntimeException("Customer not found for id: " + customerId);
+                throw new CustomerNotFoundException("Customer not found, for id: " + customerId);
             }
             return customerResponse;
 
         } catch (HttpClientErrorException.NotFound e) {
             LOGGER.error("Customer not found for id: " + customerId, e);
-            throw new RuntimeException("Customer not found for id: " + customerId);
+            throw new CustomerNotFoundException("Customer not found for id: " + customerId);
         } catch (HttpServerErrorException | ResourceAccessException e) {
             LOGGER.error("Customer Service is down or unreachable at this moment ", e);
-            throw new RuntimeException("Customer Service is currently unavailable. Please try again later.");
+            throw new ServiceNotAvailableException("Customer Service is currently unavailable. Please try again later.");
         } catch (Exception e) {
             LOGGER.error("Error fetching customer details", e);
-            throw new RuntimeException("Error fetching customer details");
+            throw new ServiceNotAvailableException("Error fetching customer details");
         }
-
     }
 
     public Optional<Mortgage> getMortgage(Long id) {

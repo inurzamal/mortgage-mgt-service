@@ -3,6 +3,8 @@ package com.nur.controller;
 import com.nur.dto.CustomerDTO;
 import com.nur.dto.MortgageDto;
 import com.nur.entity.Mortgage;
+import com.nur.exceptions.CustomerNotFoundException;
+import com.nur.exceptions.ServiceNotAvailableException;
 import com.nur.service.MortgageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +28,15 @@ public class MortgageController {
         try {
             Mortgage mortgage = mortgageService.createMortgage(mortgageDto, customerId);
             return ResponseEntity.ok(mortgage);
+        } catch (CustomerNotFoundException e) {
+            LOGGER.error("Customer not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (ServiceNotAvailableException e) {
+            LOGGER.error("Service not available: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
         } catch (RuntimeException e) {
             LOGGER.error("Error creating mortgage: {}", e.getMessage());
-            if ( e.getMessage().contains("Customer not found for id")){
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-            }
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
