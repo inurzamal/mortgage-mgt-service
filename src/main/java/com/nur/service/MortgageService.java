@@ -1,5 +1,6 @@
 package com.nur.service;
 
+import com.nur.constant.MortgageConstant;
 import com.nur.dto.CustomerDTO;
 import com.nur.dto.MortgageDto;
 import com.nur.entity.Mortgage;
@@ -10,10 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -53,17 +51,17 @@ public class MortgageService {
                     .retrieve()
                     .onStatus(status -> status.value() == 404, clientResponse -> {
                         LOGGER.error("Customer not found for id: {}", customerId);
-                        return Mono.error(new CustomerNotFoundException("Customer not found for id: " + customerId));
+                        return Mono.error(new CustomerNotFoundException(MortgageConstant.CUSTOMER_NOT_FOUND_FOR_ID + customerId));
                     })
-                    .onStatus(status -> status.is5xxServerError(), clientResponse -> {
+                    .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
                         LOGGER.error("Customer Service is down or unreachable at this moment");
-                        return Mono.error(new ServiceNotAvailableException("Customer Service is currently unavailable. Please try again later."));
+                        return Mono.error(new ServiceNotAvailableException(MortgageConstant.CUSTOMER_SERVICE_UNAVAILABLE));
                     })
                     .bodyToMono(CustomerDTO.class)
                     .block();
         } catch (WebClientRequestException e) {
             LOGGER.error("Error fetching customer details: {}", e.getMessage());
-            throw new ServiceNotAvailableException("Customer Service is currently unavailable. Please try again later.");
+            throw new ServiceNotAvailableException(MortgageConstant.CUSTOMER_SERVICE_UNAVAILABLE);
         }
     }
 
@@ -103,16 +101,16 @@ public class MortgageService {
 
             CustomerDTO customerResponse = responseEntity.getBody();
             if (customerResponse == null) {
-                throw new CustomerNotFoundException("Customer not found, for id: " + customerId);
+                throw new CustomerNotFoundException(MortgageConstant.CUSTOMER_NOT_FOUND_FOR_ID + customerId);
             }
             return customerResponse;
 
         } catch (HttpClientErrorException.NotFound e) {
-            LOGGER.error("Customer not found for id: " + customerId, e);
-            throw new CustomerNotFoundException("Customer not found for id: " + customerId);
+            LOGGER.error("Customer not found for id" + customerId, e);
+            throw new CustomerNotFoundException(MortgageConstant.CUSTOMER_NOT_FOUND_FOR_ID + customerId);
         } catch (HttpServerErrorException | ResourceAccessException e) {
             LOGGER.error("Customer Service is down or unreachable at this moment ", e);
-            throw new ServiceNotAvailableException("Customer Service is currently unavailable. Please try again later.");
+            throw new ServiceNotAvailableException(MortgageConstant.CUSTOMER_SERVICE_UNAVAILABLE);
         } catch (Exception e) {
             LOGGER.error("Error fetching customer details", e);
             throw new ServiceNotAvailableException("Error fetching customer details");
