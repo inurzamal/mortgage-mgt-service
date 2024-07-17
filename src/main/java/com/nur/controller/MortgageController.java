@@ -60,8 +60,16 @@ public class MortgageController {
     }
 
     @PostMapping("/api/mortgage/customer/{customerId}")
-    public ResponseEntity<CustomerDTO> getCustomerDetails(@PathVariable Long customerId) {
-        CustomerDTO customerDetails = mortgageService.getCustomerDetails(customerId);
-        return ResponseEntity.ok(customerDetails);
+    public ResponseEntity<?> getCustomerDetails(@PathVariable Long customerId) {
+        try {
+            CustomerDTO customerDetails = mortgageService.getCustomerDetails(customerId);
+            return ResponseEntity.ok(customerDetails);
+        } catch (CustomerNotFoundException e) {
+            LOGGER.error("Customer not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (ServiceNotAvailableException e) {
+            LOGGER.error("Service not available: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
+        }
     }
 }

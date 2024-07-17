@@ -20,6 +20,8 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,15 +44,29 @@ public class MortgageService {
     private RestTemplate restTemplate;
 
     public CustomerDTO getCustomerDetails(Long customerId) {
-
         String customerServiceUrl = baseUrl + customerId;
-        return webClientBuilder.build()
-                .get()
-                .uri(customerServiceUrl)
-                .retrieve()
-                .bodyToMono(CustomerDTO.class)
-                .block();
+
+        try {
+            return webClientBuilder.build()
+                    .get()
+                    .uri(customerServiceUrl)
+                    .retrieve()
+                    .onStatus(status -> status.value() == 404, clientResponse -> {
+                        LOGGER.error("Customer not found for id: {}", customerId);
+                        return Mono.error(new CustomerNotFoundException("Customer not found for id: " + customerId));
+                    })
+                    .onStatus(status -> status.is5xxServerError(), clientResponse -> {
+                        LOGGER.error("Customer Service is down or unreachable at this moment");
+                        return Mono.error(new ServiceNotAvailableException("Customer Service is currently unavailable. Please try again later."));
+                    })
+                    .bodyToMono(CustomerDTO.class)
+                    .block();
+        } catch (WebClientRequestException e) {
+            LOGGER.error("Error fetching customer details: {}", e.getMessage());
+            throw new ServiceNotAvailableException("Customer Service is currently unavailable. Please try again later.");
+        }
     }
+
 
     public Mortgage createMortgage(MortgageDto mortgageDto, Long customerId) {
 
