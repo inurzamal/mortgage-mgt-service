@@ -24,7 +24,7 @@ spring:
         hibernate.dialect: org.hibernate.dialect.MySQLDialect
 
 server:
-  port: 8282
+  port: 8383
 
 management:
   endpoints:
@@ -51,6 +51,6 @@ resilience4j:
 
 customer:
   service:
-    url: http://localhost:8080/customer/
+    url: http://localhost:8181/customer/
 
 
